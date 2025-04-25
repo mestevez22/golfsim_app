@@ -24,48 +24,48 @@ def clean(df):
     return clean
 
 ############### DO NOT RERUN - CREATION OF INITIAL MASTER DATA AND LOG FILE ###############
-#set paths 
-base_path = Path(__file__).resolve().parent #path of script
-csv_path = base_path.parent #path of csv files
-out_path = base_path / "master.csv" #path for output 
+# #set paths 
+# base_path = Path(__file__).resolve().parent #path of script
+# csv_path = base_path.parent #path of csv files
+# out_path = base_path / "master.csv" #path for output 
 
-#clean and merge csv files
-try:
-    files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
-    all_dfs =[]
-    for i, f in enumerate(files):
-        df = pd.read_csv(f)
-        df = clean(df)
-        if i != 0:
-            df = df.iloc[1:, :] #drop header row 
-        all_dfs.append(df)
-        print(f" Processed file {i + 1}/{len(files)}")
+# #clean and merge csv files
+# try:
+#     files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
+#     all_dfs =[]
+#     for i, f in enumerate(files):
+#         df = pd.read_csv(f)
+#         df = clean(df)
+#         if i != 0:
+#             df = df.iloc[1:, :] #drop header row 
+#         all_dfs.append(df)
+#         print(f" Processed file {i + 1}/{len(files)}")
         
-    print("File processing complete")
-    #join all files
-    master_df = pd.concat(all_dfs, ignore_index = True)
-    master_df.to_csv(out_path)
-    print("Master file written successfully")
-    status = 'success'
-    err = None
+#     print("File processing complete")
+#     #join all files
+#     master_df = pd.concat(all_dfs, ignore_index = True)
+#     master_df.to_csv(out_path)
+#     print("Master file written successfully")
+#     status = 'success'
+#     err = None
     
-except Exception as e:
-    status = 'failure'
-    err = str(e)
-    print("Unable to complete both processing and create master file")
+# except Exception as e:
+#     status = 'failure'
+#     err = str(e)
+#     print("Unable to complete both processing and create master file")
 
-#### CREATE SIMPLE LOG FILE #####
-today = datetime.date.today()
-log_file = []
-log = {'last_run': today.isoformat(),
-       'status': status,
-       'error' : err,
-       'files_processed': files}
-log_file.append(log)
+# #### CREATE SIMPLE LOG FILE #####
+# today = datetime.date.today()
+# log_file = []
+# log = {'last_run': today.isoformat(),
+#        'status': status,
+#        'error' : err,
+#        'files_processed': files}
+# log_file.append(log)
 
-filename = base_path / 'log.json'
-with open(filename, 'w') as outfile:
-    json.dump(log_file, outfile)
+# filename = base_path / 'log.json'
+# with open(filename, 'w') as outfile:
+#     json.dump(log_file, outfile)
 
 
-print(f"Log data written to '{filename}' successfully.")
+# print(f"Log data written to '{filename}' successfully.")
