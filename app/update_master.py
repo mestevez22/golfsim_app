@@ -38,7 +38,7 @@ with open(filename, "r") as f:
     current_log = json.load(f)
 
 idx = len(current_log) - 1
-target_date = pd.to_datetime(current_log[idx]['last_run'])
+target_ts = pd.to_datetime(current_log[idx]['last_run'])
 
 #set initial log status
 status = 'failure'
@@ -52,11 +52,10 @@ try:
  
     for file in files:
         try:
-            str_dt = str(file).split("export")[-1].split(".csv")[0]
-            str_dt = str_dt[:-9] #extract date 
-            dt = pd.to_datetime(str_dt) #convert to dt
+            ts_str = str(file).split("export")[-1].split(".csv")[0]
+            dt = pd.to_datetime(ts_str, format='%m-%d-%y-%H-%M-%S') #convert to dt 
 
-            if dt >= target_date:
+            if dt > target_ts:
                 files_to_process.append(file)
         except Exception as e:
             print(f"Skipping {file} - date parsing error, {str(e)}")
