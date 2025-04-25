@@ -8,7 +8,7 @@ import traceback
 from pathlib import Path
 
 #function to clean up csv files
-def clean(df):
+def clean(file):
     #distanceto pin = object (yrds/ft, etc)
     #club = object
     '''
@@ -16,8 +16,12 @@ def clean(df):
     #2 standardize distance to pin : all --> yards
     # replace ft with yds
     ''' 
+    df = pd.read_csv(file)
+    file_date = str(file).split("export")[-1].split(".csv")[0][:-9] #extract date from filename
+    dt = pd.to_datetime(file_date) #convert to dt
 
     clean = df.loc[:, (df!=0).all(axis=0)].copy() #drop zero cols
+    clean['Date'] = dt 
     clean['DistanceToPin_Yrds'] = clean['DistanceToPin'].apply(lambda x: round(float(x.split(" ")[0])/3, 2) if 'ft' in str(x.split(" ")[1]) else x) #change to yrds
     clean['DistanceToPin_Yrds'] = clean['DistanceToPin'].apply(lambda x: str(x.split(" ")[1]) .replace("ft", "yds")) #change to yrds
     clean = clean.drop('DistanceToPin', axis = 1)
@@ -34,8 +38,8 @@ def clean(df):
 #     files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
 #     all_dfs =[]
 #     for i, f in enumerate(files):
-#         df = pd.read_csv(f)
-#         df = clean(df)
+#         #df = pd.read_csv(f)
+#         df = clean(f)
 #         if i != 0:
 #             df = df.iloc[1:, :] #drop header row 
 #         all_dfs.append(df)
@@ -53,6 +57,7 @@ def clean(df):
 #     status = 'failure'
 #     err = str(e)
 #     print("Unable to complete both processing and create master file")
+#     print(err)
 
 # #### CREATE SIMPLE LOG FILE #####
 # today = datetime.date.today()
