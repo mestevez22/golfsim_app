@@ -47,8 +47,8 @@ try:
     if len(files_to_process) != 0 and current_log[idx]['status'] == 'success':
         for i, f in enumerate(files_to_process):
             try:
-                df = pd.read_csv(f)
-                df = clean(df)
+                file_path = os.path.join(csv_path, f)
+                df = clean(file_path)
                 df = df.iloc[1:, :] #drop header row 
                 new_dfs.append(df)
                 print(f" Processed file {i + 1}/{len(files_to_process)}")
@@ -65,7 +65,7 @@ try:
                 master_df = pd.read_csv(out_path)
                 new_data = pd.concat(new_dfs, ignore_index = True)
                 new_master = pd.concat([master_df, new_data], ignore_index = True)
-                new_master.to_csv(outpath)
+                new_master.to_csv(out_path)
                 status = 'success'
                 print("Master file updated successfully")
 
