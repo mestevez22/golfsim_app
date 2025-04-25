@@ -12,14 +12,16 @@ def clean(file):
     #distanceto pin = object (yrds/ft, etc)
     #club = object
     '''
-    #1 remove cols with 0 across all rows
-    #2 standardize distance to pin : all --> yards
-    # replace ft with yds
+    #1 extract timestamp from filename
+    #2 remove cols with 0 across all rows
+    #3 add col with timestamp
+    #4 standardize distance to pin : all --> yards
+    #5 replace ft with yds
+    #6 drop original distancetopin col
     ''' 
+    ts_str = str(file).split("export")[-1].split(".csv")[0]
+    dt = pd.to_datetime(ts_str, format='%m-%d-%y-%H-%M-%S') #convert to dt 
     df = pd.read_csv(file)
-    file_date = str(file).split("export")[-1].split(".csv")[0][:-9] #extract date from filename
-    dt = pd.to_datetime(file_date) #convert to dt
-
     clean = df.loc[:, (df!=0).all(axis=0)].copy() #drop zero cols
     clean['Date'] = dt 
     clean['DistanceToPin_Yrds'] = clean['DistanceToPin'].apply(lambda x: round(float(x.split(" ")[0])/3, 2) if 'ft' in str(x.split(" ")[1]) else x) #change to yrds
@@ -27,13 +29,13 @@ def clean(file):
     clean = clean.drop('DistanceToPin', axis = 1)
     return clean
 
-############### DO NOT RERUN - CREATION OF INITIAL MASTER DATA AND LOG FILE ###############
-# #set paths 
+############## DO NOT RERUN - CREATION OF INITIAL MASTER DATA AND LOG FILE ###############
+#set paths 
 # base_path = Path(__file__).resolve().parent #path of script
 # csv_path = base_path.parent #path of csv files
 # out_path = base_path / "master.csv" #path for output 
 
-# #clean and merge csv files
+#clean and merge csv files
 # try:
 #     files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
 #     all_dfs =[]
