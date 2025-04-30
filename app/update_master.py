@@ -16,6 +16,7 @@ csv_path = base_path.parent #path of csv files
 out_path = base_path / "master.csv" #path for output 
 desktop_path = csv_path.parent
 
+
 #GSPRO exports to desktop
 #check for new gspro files in desktop and move to folder
 #print(gspro_files)
@@ -83,7 +84,7 @@ try:
                 master_df = pd.read_csv(out_path)
                 new_data = pd.concat(new_dfs, ignore_index = True)
                 new_master = pd.concat([master_df, new_data], ignore_index = True)
-                new_master.to_csv(out_path)
+                new_master.to_csv(out_path, index = False)
                 status = 'success'
                 print("Master file updated successfully")
 
