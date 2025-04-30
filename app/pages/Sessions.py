@@ -44,69 +44,84 @@ with st.sidebar:
     
     #club type filter 
     club_list = ['All'] + sorted(list(set(data['Club'])))
-    selected_club = st.selectbox('Select Club', club_list, index=0)
+    #selected_club = st.selectbox('Select Club', club_list, index=0)
     
     #select metrics 
     not_metrics = ['Date', 'Month', 'Unnamed: 0', 'Club', 'Decent']
     #metrics = ['Carry', 'Path']
     metric_opts = ['All'] + [i for i in set(data.columns) if i not in not_metrics]
-    selected_metric = st.selectbox('Primary Metric', metric_opts,
-                                  index=0)  #default to All
+    #selected_metric = st.selectbox('Primary Metric', metric_opts,index=0)  #default to All
     
    
 #filter data 
-filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), 
-                                        pd.to_datetime(date_range[1]))]
+#filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
 
-
-#filter for club if not all
-if selected_club != 'All':
-    filtered = filtered[filtered['Club'] == selected_club]
-
+#MAIN CONTENT
 tab1, tab2 = st.tabs(["Performance", "Tab 2"])
+
 with tab1:
-    if selected_metric == 'All':
-        #show multiple metrics
-        numeric_metrics = [col for col in filtered.columns if col not in not_metrics]
-        st.markdown("## 🏌️‍♂️Performance Metrics") 
-        cols = st.columns((1,1,1,4), gap = 'medium') 
-        used_indices = []
-        for i, metric in enumerate(numeric_metrics):
-            avg = filtered[metric].mean()
+    st.markdown("## 🏌️‍♂️Performance Metrics")
+    col_filters = st.columns(4)
+    with col_filters[0]:
+        clubs = ['All'] + sorted(data['Club'].unique())
+        selected_club = st.selectbox("Filter by Club", clubs, index=0, key='club_filter_inline')
+    with col_filters[1]:
+        selected_avg_metric = st.selectbox("Select Average Metric", [col for col in data.columns if col not in not_metrics], key='avg_metric_inline')
+    with col_filters[2]:
+        selected_max_metric = st.selectbox("Select Maximum Metric", [col for col in data.columns if col not in not_metrics], key='max_metric_inline')
+    with col_filters[3]:
+        selected_min_metric = st.selectbox("Select Minimum Metric", [col for col in data.columns if col not in not_metrics], key='min_metric_inline')
 
-            if not pd.isna(avg):
-                used_indices.append(i)
-                with cols[i % 3]:  
-                    custom_metric_card(label=f"Avg {metric}", value=f"{avg:.1f}")
-        
-        
-        with cols[3]:
-            st.markdown("### Average Distance to Pin Over Time by Club")
+    #filter data
+    filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
+    if selected_club != 'All':
+        filtered = filtered[filtered['Club'] == selected_club]
 
-            #select multiple clubs
-            club_multiselect = st.multiselect("Filter clubs", sorted(filtered['Club'].unique()), default=sorted(filtered['Club'].unique()))
-            filtered_chart_data = filtered[filtered['Club'].isin(club_multiselect)]
-            grouped = (filtered_chart_data.groupby(['Date', 'Club'])['DistanceToPin_Yrds'].mean().reset_index())
+    #show metric cards
+    cols = st.columns((1, 1, 1,3), gap='medium')
+    with cols[0]:
+        avg = filtered[selected_avg_metric].mean()
+        if not pd.isna(avg):
+            custom_metric_card(label=f"Average {selected_avg_metric}", value=f"{avg:.1f}")
 
-            #plotly chart
-            fig = px.scatter(
-                grouped,
-                x='Date',
-                y='DistanceToPin_Yrds',
-                color='Club',
-                trendline='ols',  
-                labels={'DistanceToPin_Yrds': 'Avg Distance to Pin (Yards)'},
-                title=''
-            )
-            st.plotly_chart(fig, use_container_width=True)
-    
-                
-        
-    else:
-        #show single metric
-        st.markdown("## 🏌️‍♂️Performance Metric") 
-        col = st.columns((2, 4, 2), gap='medium')
-        with col[0]:
-            avg = filtered[selected_metric].mean()
-            if avg != 'nan':
-                custom_metric_card(label = f"Average {selected_metric}", value = f"{avg:.1f}")
+    with cols[1]:
+        max = filtered[selected_max_metric].max()
+        if not pd.isna(max):
+            custom_metric_card(label=f"Max {selected_max_metric}", value=f"{max:.1f}")
+
+    with cols[2]:
+        min = filtered[selected_min_metric].min()
+        if not pd.isna(max):
+            custom_metric_card(label=f"Min {selected_min_metric}", value=f"{min:.1f}")
+
+    with cols[3]:
+        st.markdown("### Average Distance to Pin Over Time by Club")
+
+        #multiselection for clubs 
+        club_multiselect = st.multiselect(
+            "Filter clubs", 
+            sorted(filtered['Club'].unique()), 
+            default=sorted(filtered['Club'].unique()),
+            key="performance_chart_club_filter"
+        )
+
+        filtered_chart = filtered[filtered['Club'].isin(club_multiselect)]
+        grouped = (
+            filtered_chart
+            .groupby(['Date', 'Club'])['DistanceToPin_Yrds']
+            .mean()
+            .reset_index()
+        )
+
+        fig = px.scatter(
+            grouped,
+            x='Date',
+            y='DistanceToPin_Yrds',
+            color='Club',
+            trendline='ols',
+            labels={'DistanceToPin_Yrds': 'Avg Distance to Pin (Yards)'},
+            title=''
+        )
+        fig.update_yaxes(rangemode='tozero')
+        st.plotly_chart(fig, use_container_width=True)
+ 
