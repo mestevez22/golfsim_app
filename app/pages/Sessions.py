@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import altair as alt
 import plotly.express as px
+from PIL import Image
 from style import custom_sidebar_css, custom_metric_card
 
 #page setup
@@ -61,40 +62,53 @@ tab1, tab2 = st.tabs(["Performance", "Tab 2"])
 
 with tab1:
     st.markdown("## 🏌️‍♂️Performance Metrics")
-    col_filters = st.columns(4)
+    col_filters = st.columns(2)
     with col_filters[0]:
         clubs = ['All'] + sorted(data['Club'].unique())
         selected_club = st.selectbox("Filter by Club", clubs, index=0, key='club_filter_inline')
+
     with col_filters[1]:
-        selected_avg_metric = st.selectbox("Select Average Metric", [col for col in data.columns if col not in not_metrics], key='avg_metric_inline')
-    with col_filters[2]:
-        selected_max_metric = st.selectbox("Select Maximum Metric", [col for col in data.columns if col not in not_metrics], key='max_metric_inline')
-    with col_filters[3]:
-        selected_min_metric = st.selectbox("Select Minimum Metric", [col for col in data.columns if col not in not_metrics], key='min_metric_inline')
+        all_metrics = [i for i in data.columns if i not in not_metrics]
+        selected_metric = st.selectbox("Select Avg Metric", all_metrics, key='selected_metric_inline')
+
+    # with col_filters[2]:
+    #     selected_avg_metric = st.selectbox("Select Average Metric", [col for col in data.columns if col not in not_metrics], key='avg_metric_inline')
+
+    # with col_filters[3]:
+    #     selected_max_metric = st.selectbox("Select Maximum Metric", [col for col in data.columns if col not in not_metrics], key='max_metric_inline')
 
     #filter data
     filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
     if selected_club != 'All':
         filtered = filtered[filtered['Club'] == selected_club]
-
+  
     #show metric cards
-    cols = st.columns((1, 1, 1,3), gap='medium')
+    cols = st.columns((1, 4), gap='small')
     with cols[0]:
-        avg = filtered[selected_avg_metric].mean()
+        min = filtered[selected_metric].min()
+        avg = filtered[selected_metric].mean()
+        max = filtered[selected_metric].max()
+        count = filtered[selected_metric].count()
         if not pd.isna(avg):
-            custom_metric_card(label=f"Average {selected_avg_metric}", value=f"{avg:.1f}")
+            custom_metric_card(label=f"Minimum {selected_metric}", value=f"{min:.1f}")
+            custom_metric_card(label=f"Average {selected_metric}", value=f"{avg:.1f}")
+            custom_metric_card(label=f"Maximum {selected_metric}", value=f"{max:.1f}")
+            custom_metric_card(label=f"Total Shots: {selected_metric}", value=f"{count:.1f}")
+            #st.caption(f"Total Shots: {count}")
+        # img = Image.open("ball.jpg")
+        # st.image(img, width=150)
+
+    # with cols[1]:
+    #     max = filtered[selected_max_metric].max()
+    #     if not pd.isna(max):
+    #         custom_metric_card(label=f"Max {selected_max_metric}", value=f"{max:.1f}")
+
+    # with cols[2]:
+    #     min = filtered[selected_min_metric].min()
+    #     if not pd.isna(max):
+    #         custom_metric_card(label=f"Min {selected_min_metric}", value=f"{min:.1f}")
 
     with cols[1]:
-        max = filtered[selected_max_metric].max()
-        if not pd.isna(max):
-            custom_metric_card(label=f"Max {selected_max_metric}", value=f"{max:.1f}")
-
-    with cols[2]:
-        min = filtered[selected_min_metric].min()
-        if not pd.isna(max):
-            custom_metric_card(label=f"Min {selected_min_metric}", value=f"{min:.1f}")
-
-    with cols[3]:
         st.markdown("### Average Distance to Pin Over Time by Club")
 
         #multiselection for clubs 
@@ -124,4 +138,6 @@ with tab1:
         )
         fig.update_yaxes(rangemode='tozero')
         st.plotly_chart(fig, use_container_width=True)
+
+
  
