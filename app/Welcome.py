@@ -21,4 +21,8 @@ custom_sidebar_css() #apply custom css for sidebar
 
 st.write("# Welcome to SimShot Analytics 👋")
 with st.sidebar:
-    st.success("Choose a view above")
+    st.success("Choose a view below")
+    #st.page_link('app.py', label='Welcome', icon='🔥')
+    #st.page_link('pages/sessions.py', label='Sessions Overview', icon='🛡️')
+    
+
