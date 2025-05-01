@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-class preprocessor:
-    def __init__(self):
-        self.path = Path().resolve().parent
-        self.filename = 'master.csv'
+class Preprocessor:
+    def __init__(self, filename = 'master.csv'):
+        self.path = Path(__file__).resolve().parent
+        self.filename = filename
         self.file = self.path / self.filename
         self.raw_df = None
         self.clean_df = None
@@ -38,7 +38,7 @@ class preprocessor:
     def process_data(self):
         if self.raw_df is None:
             self.load_data()
-        df = self.raw.df.copy()
+        df = self.raw_df.copy()
         #loop thru numeric cols 
         for col in df.select_dtypes(include='number').columns:
             df[col] = self.remove_outliers(df[col]) #remoce outliers
