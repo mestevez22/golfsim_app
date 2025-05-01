@@ -8,8 +8,10 @@ import altair as alt
 import plotly.graph_objects as go
 import plotly.express as px
 from PIL import Image
-from style import custom_sidebar_css, custom_metric_card
 from plotly.subplots import make_subplots
+from datetime import timedelta
+from style import custom_sidebar_css, custom_metric_card
+from process import Preprocessor
 
 #page setup
 st.set_page_config(
@@ -22,26 +24,22 @@ st.set_page_config(
 #inject css to background and sidebar 
 custom_sidebar_css()
 
-#load and prepare data 
+#load preprocessed data
 @st.cache_data
-def get_master_data():
-    path = Path(__file__).resolve().parent.parent  #path of app's script
-    df = pd.read_csv(path / 'master.csv')
-    df['Date'] = pd.to_datetime(df['Date'])
-    df['Month'] = pd.to_datetime(df['Date']).dt.month_name()
-    df['DistanceToPin_Yrds'] = df['DistanceToPin_Yrds'].apply(lambda x: float(x.split(' ')[0]))
-    return df
+def load_master_data():
+    processor = Preprocessor()
+    return processor.get_data()
 
-data = get_master_data()
+data = load_master_data()
 
 #set sidebar up
 with st.sidebar:
     st.title('Golf Simulation Statistics')
     
     #filter for date change
-    min_date = data['Date'].min().date()
-    max_date = data['Date'].max().date()
-    date_range = st.date_input('Date Range', [min_date, max_date])
+    start_dt = data['Date'].min()
+    end_dt = data['Date'].max() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+    date_range = st.date_input('Date Range', [start_dt, end_dt])
     if len(date_range) != 2:
         st.stop()
     
@@ -122,7 +120,7 @@ with tab1:
 with tab2:
     #st.markdown("## Angle of Attacks vs. Club Type")
 
-    col_filters2 = st.columns(2)
+    #col_filters2 = st.columns(2)
     # with col_filters2[0]:
     #     # Club type selector
     #     club_opts = filtered['Club'].unique()
@@ -215,7 +213,37 @@ with tab2:
         fig3.update_yaxes(range = [filtered['AoA'].min() - 1,filtered['AoA'].max() + 1])
         st.plotly_chart(fig3, use_container_width=True)
 
-        
+with tab3:
+    col_filters2 = st.columns(1)
+    with col_filters2[0]:
+        # Club type selector
+        x_metric= ['BackSpin', 'rawSpinAxis']
+        selected_spin = st.selectbox("Select Spin Metric", options= x_metric)
+
+    filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
+    cols = st.columns((4,4), gap = 'medium')
+
+    with cols[0]:
+        #multiselection for clubs 
+        club_multiselect3 = st.multiselect(
+            "Filter clubs", 
+            sorted(filtered['Club'].unique()), 
+            default=sorted(filtered['Club'].unique()),
+            key="Spin_chart_club_filter"
+        )
+
+        # Filter the data based on selection
+        filtered_chart3 = filtered[filtered['Club'].isin(club_multiselect3)]
+
+        grouped3 = (
+        filtered_chart
+        .groupby('Club')[['Carry', 'BackSpin', 'rawSpinAxis']]
+        .mean()
+        .reset_index()
+    )
+        fig5 = px.bar(grouped3, x = selected_spin, y = 'Carry')
+        st.plotly_chart(fig5, use_container_width=True)
+
 
 
 
