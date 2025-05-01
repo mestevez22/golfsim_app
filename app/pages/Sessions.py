@@ -13,236 +13,232 @@ from datetime import timedelta
 from style import custom_sidebar_css, custom_metric_card
 from process import Preprocessor
 
-#page setup
-st.set_page_config(
-    page_title="Sessions Overview",
-    page_icon="⛳",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
-#inject css to background and sidebar 
-custom_sidebar_css()
-
-#load preprocessed data
-@st.cache_data
-def load_master_data():
-    processor = Preprocessor()
-    return processor.get_data()
-
-data = load_master_data()
-
-#set sidebar up
-with st.sidebar:
-    st.title('Golf Simulation Statistics')
+class SessionsPage:
+    def __init__(self):
+        self.data = Preprocessor().get_data()
+        self.tab_labels = ['Performance', 'Angle of Attack', 'Smash Factor', 'Spin Analysis'] #tab labels
+        self.club_filter_opts = ['All'] + sorted(self.data['Club'].unique()) #club type filter options 
+        self.start_date = self.data['Date'].min()
+        self.end_date = self.data['Date'].max() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        self.not_metrics = ['Date', 'Unnamed: 0', 'Club', 'Decent']
+        self.metric_opts = [i for i in set(self.data.columns) if i not in self.not_metrics]
+        self.filtered_data = None
     
-    #filter for date change
-    start_dt = data['Date'].min()
-    end_dt = data['Date'].max() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-    date_range = st.date_input('Date Range', [start_dt, end_dt])
-    if len(date_range) != 2:
-        st.stop()
+    #filter data based on inputs
+    def filter_data(self, date_range, selected_club):
+        filtered = self.data[self.data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
+
+        if isinstance(selected_club, list):
+            if 'All' not in selected_club:
+                filtered = filtered[filtered['Club'].isin(selected_club)]
+        else:
+            if selected_club != 'All':
+                filtered = filtered[filtered['Club'] == selected_club]
+
+        return filtered
+
     
-    #club list for  filter 
-    club_list = ['All'] + sorted(list(set(data['Club'])))
-    
-    #select metrics 
-    not_metrics = ['Date', 'Month', 'Unnamed: 0', 'Club', 'Decent']
-    metric_opts = ['All'] + [i for i in set(data.columns) if i not in not_metrics]
-    
-
-#MAIN CONTENT
-tab1, tab2, tab3 = st.tabs(["Performance", "Angle of Attack", "Smash Factor"])
-
-with tab1:
-    st.markdown("## 🏌️‍♂️Performance Metrics")
-    col_filters = st.columns(2)
-    with col_filters[0]:
-        clubs = ['All'] + sorted(data['Club'].unique())
-        selected_club = st.selectbox("Filter by Club", clubs, index=0, key='club_filter_tab1')
-
-    with col_filters[1]:
-        all_metrics = [i for i in data.columns if i not in not_metrics]
-        selected_metric = st.selectbox("Select Metric", all_metrics, key='selected_metric_inline')
-
-    #filter data
-    filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
-    if selected_club != 'All':
-        filtered = filtered[filtered['Club'] == selected_club]
-  
-    #show metric cards
-    cols = st.columns((1, 4), gap='small')
-    with cols[0]:
-        min = filtered[selected_metric].min()
-        avg = filtered[selected_metric].mean()
-        max = filtered[selected_metric].max()
-        std = filtered[selected_metric].std()
-        count = filtered[selected_metric].count()
-        if not pd.isna(avg):
-            custom_metric_card(label="Minimum", value=f"{min:.1f}")
-            custom_metric_card(label="Average", value=f"{avg:.1f}")
-            custom_metric_card(label="Maximum", value=f"{max:.1f}")
-            custom_metric_card(label="Standard Deviation", value=f"{std:.1f}")
-            st.caption(f"Total Shots: {count}")
-
-    with cols[1]:
-        st.markdown("### Average Distance to Pin Over Time by Club")
-        #multiselection for clubs 
+    #define multiselection filter for plotly charts 
+    def club_multiselect(self, key: str):
         club_multiselect = st.multiselect(
-            "Filter clubs", 
-            sorted(filtered['Club'].unique()), 
-            default=sorted(filtered['Club'].unique()),
-            key="performance_chart_club_filter"
+                    "Filter clubs", 
+                    self.club_filter_opts, 
+                    default=self.club_filter_opts,
+                    key=key
+                )
+        return club_multiselect
+
+    #render tabs 
+    def render(self):
+        st.set_page_config(
+            page_title="Sessions Overview",
+            page_icon="⛳",
+            layout="wide",
+            initial_sidebar_state="expanded"
         )
+        #inject custom css 
+        custom_sidebar_css()
 
-        filtered_chart = filtered[filtered['Club'].isin(club_multiselect)]
-        grouped = (
-            filtered_chart
-            .groupby(['Date', 'Club'])['DistanceToPin_Yrds']
-            .mean()
-            .reset_index()
-        )
+        #set up sidebar 
+        with st.sidebar:
+            st.title('Golf Simulation Statistics')
+            
+            #filter for date change
+            self.date_range = st.date_input('Date Range', [self.start_date, self.end_date])
+            if len(self.date_range) != 2:
+                st.stop() 
 
-        fig = px.scatter(
-            grouped,
-            x='Date',
-            y='DistanceToPin_Yrds',
-            color='Club',
-            trendline='ols',
-            labels={'DistanceToPin_Yrds': 'Avg Distance to Pin (Yards)'},
-            title=''
-        )
-        fig.update_yaxes(rangemode='tozero')
-        st.plotly_chart(fig, use_container_width=True)
-
-
-
-with tab2:
-    #st.markdown("## Angle of Attacks vs. Club Type")
-
-    #col_filters2 = st.columns(2)
-    # with col_filters2[0]:
-    #     # Club type selector
-    #     club_opts = filtered['Club'].unique()
-    #     selected_club = st.selectbox("Select Club Type", options=club_opts)
-
-    #filter data
-    filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
-
-    cols = st.columns((4, 4), gap='medium')
-    with cols[0]:
-        #multiselection for clubs 
-        club_multiselect2 = st.multiselect(
-            "Filter clubs", 
-            sorted(filtered['Club'].unique()), 
-            default=sorted(filtered['Club'].unique()),
-            key="AoA_chart_club_filter"
-        )
-
-        # Filter the data based on selection
-        filtered_chart2 = filtered[filtered['Club'].isin(club_multiselect2)]
-
-        #create secondary y-axis
-        fig4 = make_subplots(specs=[[{"secondary_y": True}]])
-
-        # plot a scatter chart by specifying the x and y values
-        # Use add_trace function to specify secondary_y axes.
-        fig4.add_trace(
-            go.Scatter(x=filtered_chart2['AoA'], y=filtered_chart2['Carry'], name="Angle of Attack", mode = 'markers', marker=dict(color='blue')),
-            secondary_y=False)
-
-        # Use add_trace function and specify secondary_y axes = True.
-        fig4.add_trace(
-            go.Scatter(x=filtered_chart2['AoA'], y=filtered_chart2['PeakHeight'], name="Peak Height", mode= 'markers', marker=dict(color='red')),
-            secondary_y=True)
-
-        # Adding title text to the figure
-        # fig4.update_layout(
-        #     title_text="Multiple Y Axis in Plotly"
-        # )
-
-        # Naming x-axis
-        fig4.update_xaxes(title_text="Angle of Attack")
-
-        # Naming y-axes
-        fig4.update_yaxes(title_text="<b>Carry Distance</b>", secondary_y=False)
-        fig4.update_yaxes(title_text="<b>Peak Height</b> ", secondary_y=True)
-        st.plotly_chart(fig4, use_container_width=True)
-
-    #group by club, get mean AoA and count
-        grouped1 = (
-            filtered
-            .groupby('Club', observed=True)
-            .agg(AoA=('AoA', 'mean'), Count=('AoA', 'count'))
-            .reset_index()
-        )
-        st.markdown("Angle of Attacks vs. Club Type")
-        # Create bubble chart
-        fig2 = px.scatter(
-            grouped1,
-            x='Club',
-            y='AoA',
-            size='Count',#number of shots            
-            color='Club',
-            labels={'AoA': 'Mean Angle of Attack', 'Count': 'Shot Count'},
-            title='',
-            size_max=40            
-        )
-
-        fig2.update_yaxes(range=[filtered['AoA'].min() - 1, filtered['AoA'].max() + 1])
-        st.plotly_chart(fig2, use_container_width=True)
+        #create tabs and tab methods 
+        tabs = st.tabs(self.tab_labels)
+        for tab, label in zip(tabs, self.tab_labels):
+            with tab:
+                if label == 'Performance':
+                    self.render_perform_tab()
+                elif label == 'Angle of Attack':
+                    self.render_AoA_tab()
+                elif label == 'Smash Factor':
+                    self.render_smash_tab()
+                else:
+                    self.render_spin_tab()
     
-    with cols[1]:
-        st.markdown("Angle of Attacks vs. Carry Distance")
+    ############## RENDER TAB 1 - PERFORMANCE METRICS ############## 
+    def render_perform_tab(self):
+        st.markdown("## Performance Metrics")
+        col_filters = st.columns(2)
+
+        with col_filters[0]:
+            self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab1')
+
+        with col_filters[1]:
+            self.selected_metric = st.selectbox("Select Metric", self.metric_opts, key='selected_metric_inline')
+
+        filtered_data = self.filter_data(self.date_range, self.selected_club)  #filter data based on selections
+
+        #show metric cards
+        cols = st.columns((1, 4), gap='small')
+        with cols[0]:
+            metric_data = filtered_data[self.selected_metric]
+            min_val = metric_data.min()
+            avg_val = metric_data.mean()
+            max_val = metric_data.max()
+            std_val = metric_data.std()
+            count_val = metric_data.count()
+
+            if not pd.isna(min_val):
+                custom_metric_card(label="Minimum", value=f"{min_val:.1f}")
+            if not pd.isna(avg_val):
+                custom_metric_card(label="Average", value=f"{avg_val:.1f}")
+            if not pd.isna(max_val):
+                custom_metric_card(label="Maximum", value=f"{max_val:.1f}")
+            if not pd.isna(std_val):
+                custom_metric_card(label="Standard Deviation", value=f"{std_val:.1f}")
+                st.caption(f"Total Shots: {count_val}")
         
-        # Create bins 
-        bin_edges = [0, 50, 75, 100, 125, 150, 175, 200,225]
-        bin_labels = ['0–50', '50–75', '75–100', '100-125', '125-150', '150–175', '175–200', '200-225']
-        filtered['CarryBin'] = pd.cut(filtered['Carry'], bins=bin_edges, labels=bin_labels, right=False)
-        binned = filtered.groupby('CarryBin', observed=True).agg({'AoA': 'mean'}).reset_index()
+        #render distancetopin trend chart
+        with cols[1]:
+            st.markdown("### Average Distance to Pin Over Time by Club")
+            #chart multiselection filter for clubs 
+            selected_clubs = self.club_multiselect("perform_chart_club_filter")
 
-        fig3 = px.bar(
-        binned,
-        x='CarryBin',
-        y='AoA',
-        #barmode= 'group',
-        color='CarryBin',
-        labels={'CarryBin': 'Carry Distance (Yard Bins)', 'AoA': 'Average AoA'},
-        title=''
-    )
-        fig3.update_yaxes(range = [filtered['AoA'].min() - 1,filtered['AoA'].max() + 1])
-        st.plotly_chart(fig3, use_container_width=True)
+            filtered_chart = filtered_data[filtered_data['Club'].isin(selected_clubs)]
+            grouped = (
+                filtered_chart
+                .groupby(['Date', 'Club'])['DistanceToPin']
+                .mean()
+                .reset_index()
+            )
 
-with tab3:
-    col_filters2 = st.columns(1)
-    with col_filters2[0]:
-        # Club type selector
-        x_metric= ['BackSpin', 'rawSpinAxis']
-        selected_spin = st.selectbox("Select Spin Metric", options= x_metric)
+            fig = px.scatter(
+                grouped,
+                x='Date',
+                y='DistanceToPin',
+                color='Club',
+                trendline='ols',
+                labels={'DistanceToPin': 'Avg Distance to Pin (Yards)'},
+                title=''
+            )
+            fig.update_yaxes(rangemode='tozero')
+            st.plotly_chart(fig, use_container_width=True)
 
-    filtered = data[data['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
-    cols = st.columns((4,4), gap = 'medium')
 
-    with cols[0]:
-        #multiselection for clubs 
-        club_multiselect3 = st.multiselect(
-            "Filter clubs", 
-            sorted(filtered['Club'].unique()), 
-            default=sorted(filtered['Club'].unique()),
-            key="Spin_chart_club_filter"
-        )
+    ############## RENDER TAB 2 - ANGLE OF ATTACK ANALYSIS ############## 
+    def render_AoA_tab(self):
+        st.markdown("## Angle of Attack vs. Club Type")
+        cols = st.columns((4, 4), gap='medium')
+    
 
-        # Filter the data based on selection
-        filtered_chart3 = filtered[filtered['Club'].isin(club_multiselect3)]
+        #-----chart 1: AoA vs Peak & Carry-------#
+        with cols[0]:
+            #multiselection for clubs 
+            selected_clubs = self.club_multiselect("AoA_chart_club_filter")
 
-        grouped3 = (
-        filtered_chart
-        .groupby('Club')[['Carry', 'BackSpin', 'rawSpinAxis']]
-        .mean()
-        .reset_index()
-    )
-        fig5 = px.bar(grouped3, x = selected_spin, y = 'Carry')
-        st.plotly_chart(fig5, use_container_width=True)
+            #filter based on club selection
+            filtered_chart = self.filter_data(self.date_range, selected_clubs)
+            aoa_range = [filtered_chart['AoA'].min() - 1, filtered_chart['AoA'].max() + 1]
+
+
+            #create secondary y-axis
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            # plot dual axis scatter plot
+            fig.add_trace(
+                go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['Carry'], name="Carry Distance", mode = 'markers', marker=dict(color='blue')),
+                secondary_y=False)
+
+            # Use add_trace function and specify secondary_y axes = True.
+            fig.add_trace(
+                go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['PeakHeight'], name="Peak Height", mode= 'markers', marker=dict(color='red')),
+                secondary_y=True)
+
+            # Adding title text to the figure
+            # fig4.update_layout(
+            #     title_text="Multiple Y Axis in Plotly"
+            # )
+
+            # Naming x-axis
+            fig.update_xaxes(title_text="Angle of Attack")
+
+            # Naming y-axes
+            fig.update_yaxes(title_text="<b>Carry Distance</b>", secondary_y=False)
+            fig.update_yaxes(title_text="<b>Peak Height</b> ", secondary_y=True)
+            st.plotly_chart(fig, use_container_width=True)
+    
+            #-----chart 2: AoA vs Club -------#
+            #group by club, get mean AoA and count
+            grouped = (
+                filtered_chart
+                .groupby('Club', observed=True)
+                .agg(AoA=('AoA', 'mean'), Count=('AoA', 'count'))
+                .reset_index()
+            )
+            st.markdown("Angle of Attacks vs. Club Type")
+            #bubble chart 
+            fig2 = px.scatter(
+                grouped,
+                x='Club',
+                y='AoA',
+                size='Count',#number of shots            
+                color='Club',
+                labels={'AoA': 'Mean Angle of Attack', 'Count': 'Shot Count'},
+                title='',
+                size_max=40            
+            )
+
+            fig2.update_yaxes(range= aoa_range)
+            st.plotly_chart(fig2, use_container_width=True)
+            
+            #-----chart 3: AoA vs Club -------#
+            with cols[1]:
+                st.markdown("Angle of Attacks vs. Carry Distance")
+                
+                # Create bins 
+                bin_edges = [0, 50, 75, 100, 125, 150, 175, 200,225]
+                bin_labels = ['0–50', '50–75', '75–100', '100-125', '125-150', '150–175', '175–200', '200-225']
+                filtered_chart = filtered_chart.copy()
+                filtered_chart['CarryBin'] = pd.cut(filtered_chart['Carry'], bins=bin_edges, labels=bin_labels, right=False)
+                binned = filtered_chart.groupby('CarryBin', observed=True).agg({'AoA': 'mean'}).reset_index()
+
+                fig3 = px.bar(
+                binned,
+                x='CarryBin',
+                y='AoA',
+                color='CarryBin',
+                labels={'CarryBin': 'Carry Distance (Yard Bins)', 'AoA': 'Average AoA'},
+                title=''
+            )
+                fig3.update_yaxes(range = aoa_range)
+                st.plotly_chart(fig3, use_container_width=True)
+
+
+
+#check progress
+SessionsPage().render()
+
+
+    
+# #---------------------------------------------------------------------------------
+
 
 
 
