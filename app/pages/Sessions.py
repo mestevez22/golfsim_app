@@ -153,55 +153,56 @@ class SessionsPage:
 
     ############## RENDER TAB 2 - ANGLE OF ATTACK ANALYSIS ############## 
     def render_AoA_tab(self):
-        st.markdown("Angle of Attack vs. Club Type")
-        cols = st.columns((4, 4), gap='medium')
+        st.markdown("## Angle of Attack vs. Carry Distance vs. Peak Height")
         all_club_chart = self.all_club_data()
         #all_club_chart = self.filter_data(self.date_range, 'All')  
         aoa_range = [all_club_chart['AoA'].min() - 1, all_club_chart['AoA'].max() + 1]
     
 
         #-----chart 1: AoA vs Peak & Carry-------#
-        with cols[0]:
+        #with cols[0]:
             #multiselection for clubs 
-            selected_clubs = self.club_multiselect("AoA_chart_club_filter")
+        selected_clubs = self.club_multiselect("AoA_chart_club_filter")
 
-            #filter based on club selection
-            filtered_chart = self.filter_data(self.date_range, selected_clubs)   #chart 1 only
+        #filter based on club selection
+        filtered_chart = self.filter_data(self.date_range, selected_clubs)   #chart 1 only
 
-            #create secondary y-axis
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
+        #create secondary y-axis
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # plot dual axis scatter plot
-            fig.add_trace(
-                go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['Carry'], name="Carry Distance", mode = 'markers', marker=dict(color='blue')),
-                secondary_y=False)
+        # plot dual axis scatter plot
+        fig.add_trace(
+            go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['Carry'], name="Carry Distance", mode = 'markers', marker=dict(color='blue')),
+            secondary_y=False)
 
-            # Use add_trace function and specify secondary_y axes = True.
-            fig.add_trace(
-                go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['PeakHeight'], name="Peak Height", mode= 'markers', marker=dict(color='red')),
-                secondary_y=True)
+        # Use add_trace function and specify secondary_y axes = True.
+        fig.add_trace(
+            go.Scatter(x=filtered_chart['AoA'], y=filtered_chart['PeakHeight'], name="Peak Height", mode= 'markers', marker=dict(color='red')),
+            secondary_y=True)
 
-            # Adding title text to the figure
-            # fig4.update_layout(
-            #     title_text="Multiple Y Axis in Plotly"
-            # )
+        # Adding title text to the figure
+        # fig4.update_layout(
+        #     title_text="Multiple Y Axis in Plotly"
+        # )
 
-            # Naming x-axis
-            fig.update_xaxes(title_text="Angle of Attack")
+        # Naming x-axis
+        fig.update_xaxes(title_text="Angle of Attack")
 
-            # Naming y-axes
-            fig.update_yaxes(title_text="<b>Carry Distance</b>", secondary_y=False)
-            fig.update_yaxes(title_text="<b>Peak Height</b> ", secondary_y=True)
-            st.plotly_chart(fig, use_container_width=True)
+        # Naming y-axes
+        fig.update_yaxes(title_text="<b>Carry Distance</b>", secondary_y=False)
+        fig.update_yaxes(title_text="<b>Peak Height</b> ", secondary_y=True)
+        st.plotly_chart(fig, use_container_width=True)
 
         #-----chart 2: AoA vs Club -------#
+        cols = st.columns((4, 4), gap='medium')
+        with cols[0]:
             grouped = (
                 all_club_chart
                 .groupby('Club', observed=True)
                 .agg(AoA=('AoA', 'mean'), Count=('AoA', 'count'))
                 .reset_index()
             )
-            st.markdown("Angle of Attacks vs. Club Type")
+            st.markdown("## Angle of Attacks vs. Club Type")
             #bubble chart 
             fig2 = px.scatter(
                 grouped,
@@ -219,7 +220,7 @@ class SessionsPage:
             
         #-----chart 3: AoA vs Club -------#
         with cols[1]:
-            st.markdown("Angle of Attacks vs. Carry Distance")
+            st.markdown("## Angle of Attacks vs. Carry Distance")
             
             #create bins 
             bin_edges = [0, 50, 75, 100, 125, 150, 175, 200,225]
