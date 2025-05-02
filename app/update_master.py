@@ -111,9 +111,9 @@ except Exception as e:
 
                         
 #### UPDATE LOG FILE #####
-today = datetime.date.today()
+#today = datetime.date.today()
 #log_file = []
-log = {'last_run': today.isoformat(),
+log = {'last_run': datetime.datetime.now().isoformat(),
         'status': status,
         'error' : err,
         'files_processed': files_to_process if len(files_to_process) == len(new_dfs) and status == 'success'else []}
