@@ -281,15 +281,14 @@ class SessionsPage:
             .agg(Carry=('Carry', 'mean'), Count=('Carry', 'count'))
             .reset_index()
         )
-
-        fig = px.bar(
-        grouped,
-        x= self.selected_spin,
+        fig = px.scatter(
+        filtered_data,
+        x=self.selected_spin,
         y='Carry',
-        color='Carry',
-        labels={self.selected_spin: self.selected_spin,'Carry': 'Average Carry Distance (Yards)','Count': 'Number of Shots'},
-        title=''
-    )
+        trendline='lowess',  
+        labels={self.selected_spin: self.selected_spin, 'Carry': 'Carry Distance (Yards)'}
+        )
+
         st.plotly_chart(fig, use_container_width=True)
 
 
