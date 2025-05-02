@@ -55,7 +55,8 @@ class SessionsPage:
             return list(self.data['Club'].unique())
         return clubs
 
-
+    def all_club_data(self):
+        return self.filter_data(self.date_range, 'All') 
 
     #render tabs 
     def render(self):
@@ -154,7 +155,8 @@ class SessionsPage:
     def render_AoA_tab(self):
         st.markdown("Angle of Attack vs. Club Type")
         cols = st.columns((4, 4), gap='medium')
-        all_club_chart = self.filter_data(self.date_range, 'All')  
+        all_club_chart = self.all_club_data()
+        #all_club_chart = self.filter_data(self.date_range, 'All')  
         aoa_range = [all_club_chart['AoA'].min() - 1, all_club_chart['AoA'].max() + 1]
     
 
@@ -241,7 +243,7 @@ class SessionsPage:
 
     def render_smash_tab(self):
         st.markdown(" ## Smash Factor Analysis")
-        all_club_chart = self.filter_data(self.date_range, 'All') 
+        all_club_chart = self.all_club_data()
         selected_clubs = self.club_multiselect("smash_chart_club_filter")
         filtered_chart = all_club_chart[all_club_chart['Club'].isin(selected_clubs)]
 
@@ -252,7 +254,7 @@ class SessionsPage:
         filtered_chart['SmashBin'] = pd.cut(filtered_chart['SmashFactor'], bins=bin_edges, labels=bin_labels, right=False)
         binned = filtered_chart.groupby('SmashBin', observed=True).agg({'DistanceToPin': 'mean'}).reset_index()
 
-        fig3 = px.bar(
+        fig = px.bar(
         binned,
         x='SmashBin',
         y='DistanceToPin',
@@ -260,28 +262,37 @@ class SessionsPage:
         labels={'SmashBin': 'Smash Factor (ranges)', 'DistanceToPin': 'Average DistanceToPin'},
         title=''
     )
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+    ############## RENDER TAB 4 - SPIN ANALYSIS ############## 
+    def render_spin_tab(self):
+        col_filters = st.columns(2)
+        with col_filters[0]:
+            self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab3')
+
+        with col_filters[1]:
+            self.selected_spin = st.selectbox("Select Metric", self.spin_metrics, key='selected_spin_inline')
+
+        filtered_data = self.filter_data(self.date_range, self.selected_club)  #filter data based on selections
+
+        grouped = (
+            filtered_data
+            .groupby(self.selected_spin, observed=True)
+            .agg(Carry=('Carry', 'mean'), Count=('Carry', 'count'))
+            .reset_index()
+        )
+
+        fig = px.bar(
+        grouped,
+        x= self.selected_spin,
+        y='Carry',
+        color='Carry',
+        labels={self.selected_spin: self.selected_spin,'Carry': 'Average Carry Distance (Yards)','Count': 'Number of Shots'},
+        title=''
+    )
+        st.plotly_chart(fig, use_container_width=True)
 
 
-
-
-
-
-
-
-
-    # def render_spin_tab():
-        # col_filters = st.columns(1)
-        # with col_filters[0]:
-        #     self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab3')
-
-        # with col_filters[1]:
-        #     self.selected_spin = st.selectbox("Select Metric", self.spin_metrics, key='selected_spin_inline')
-
-        # filtered_data = self.filter_data(self.date_range, self.selected_club)  #filter data based on selections
-
-        # cols = st.columns((4,4), gap ='medium')
-        # with cols[0]:
 
 
 
