@@ -267,11 +267,15 @@ class SessionsPage:
 
     ############## RENDER TAB 4 - SPIN ANALYSIS ############## 
     def render_spin_tab(self):
-        col_filters = st.columns(2)
+        col_filters = st.columns(3)
+        self.dist_metrics = ['Carry', 'TotalDistance']
         with col_filters[0]:
-            self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab3')
-
+            self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab4')
+    
         with col_filters[1]:
+            self.selected_dist = st.selectbox("Select a Distance Type", self.dist_metrics, key='selected_dist_inline')
+
+        with col_filters[2]:
             self.selected_spin = st.selectbox("Select Metric", self.spin_metrics, key='selected_spin_inline')
 
         filtered_data = self.filter_data(self.date_range, self.selected_club)  #filter data based on selections
@@ -279,15 +283,15 @@ class SessionsPage:
         grouped = (
             filtered_data
             .groupby(self.selected_spin, observed=True)
-            .agg(Carry=('Carry', 'mean'), Count=('Carry', 'count'))
+            .agg(Distance=(self.selected_dist, 'mean'), Count=(self.selected_dist, 'count'))
             .reset_index()
         )
         fig = px.scatter(
         filtered_data,
         x=self.selected_spin,
-        y='Carry',
+        y= self.selected_dist,
         trendline='lowess',  
-        labels={self.selected_spin: self.selected_spin, 'Carry': 'Carry Distance (Yards)'}
+        labels={self.selected_spin: self.selected_spin, self.selected_dist: f"{self.selected_dist} (Yards)"}
         )
 
         st.plotly_chart(fig, use_container_width=True)
