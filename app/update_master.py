@@ -50,6 +50,7 @@ try:
     #collect files that need to be added 
     files = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
     files_to_process = []
+    df_lens = []
  
     for file in files:
         try:
@@ -70,6 +71,7 @@ try:
                 df = clean(file_path)
                 df = df.iloc[1:, :] #drop header row 
                 new_dfs.append(df)
+                df_lens.append(df.shape[0])
                 print(f" Processed file {i + 1}/{len(files_to_process)}")
        
             except Exception as e:
@@ -83,6 +85,10 @@ try:
             try:
                 master_df = pd.read_csv(out_path)
                 new_data = pd.concat(new_dfs, ignore_index = True)
+                expected_rows = sum(df_lens)
+                assert expected_rows == new_data.shape[0], "Row count mismatch in new data"
+
+
                 new_master = pd.concat([master_df, new_data], ignore_index = True)
                 new_master.to_csv(out_path, index = False)
                 status = 'success'
