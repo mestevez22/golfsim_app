@@ -15,13 +15,25 @@ class RunRandomForest():
     def __init__(self, data, target: str, exclude_cols = None):
         self.data = data.dropna(subset=[target])
         self.target = target 
-        default = ['Date', target]
+        if self.target == 'Carry':
+            self.target_corr = ['rawCarryGame', 'TotalDistance']
+        elif self.target == 'TotalDistance':
+            self.target_corr = ['rawCarryGame', 'Carry']
+        default =  ['Date', self.target] + self.target_corr
+
         if exclude_cols is None:
             self.exclude_cols = default
         else:
-            self.exclude_cols = list(set(exclude_cols + [target]))
+            self.exclude_cols = list(set(exclude_cols + default))
         self.X = self.data.drop(columns=self.exclude_cols)#drop response and date var
         self.y = self.data[target].values 
+
+        # --- Drop rows with NaNs in any feature ---
+        tmp = self.X.copy()
+        tmp['target'] = self.y
+        tmp = tmp.dropna()
+        self.y = tmp['target'].values
+        self.X = tmp.drop(columns=['target'])
         assert np.issubdtype(self.y.dtype, np.number), "Y must be numeric"
     
     def onehotencode(self):
