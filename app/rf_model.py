@@ -1,18 +1,23 @@
 #load packages
 import pandas as pd
 import numpy as np
-import numbers
+import datetime
+import shap 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
-from process import Preprocessor 
+from process import Preprocessor
 
 
-class RandomForest():
-    def __init__(self, data, target: str):
+
+class RunRandomForest():
+    def __init__(self, data, target: str, exclude_cols = None):
         self.data = data.dropna(subset=[target])
-        self.exclude_cols = ['Date', target]
+        if exclude_cols == None:
+            self.exclude_cols = ['Date', target]
+        else:
+            self.exclude_cols = exclude_cols
         self.X = self.data.drop(columns=self.exclude_cols)#drop response and date var
         self.y = self.data[target].values 
         assert np.issubdtype(self.y.dtype, np.number), "Y must be numeric"
@@ -32,11 +37,9 @@ class RandomForest():
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size= size, random_state=42)
         return self.X_train, self.X_test, self.y_train, self.y_test
     
-    def fit(self, n_estimators = 10):
-        self.rf = RandomForestRegressor(n_estimators=n_estimators, random_state=42, oob_score=True)
-        self.rf.fit(self.X_train, self.y_train)
-    
-    def tune(self, n): #n = number of cv 
+
+    def fit(self, cv, log_cv = False): 
+        base_rf = RandomForestRegressor(oob_score=True, random_state=42)
         self.param_grid = {
             'n_estimators': [50, 100, 200],                   
             'max_depth': [None, 5, 10, 20],                   
@@ -46,30 +49,25 @@ class RandomForest():
             'bootstrap': [True]                      
         }
 
-        self.grid_search = GridSearchCV(self.rf, param_grid=self.param_grid,scoring='neg_mean_squared_error', cv= n, n_jobs=-1)
+        self.grid_search = GridSearchCV(base_rf, param_grid=self.param_grid,scoring='neg_mean_squared_error', cv= cv, n_jobs=-1)
         self.grid_search.fit(self.X_train, self.y_train)
+        if log_cv:
+            cv_results = pd.DataFrame(self.grid_search.cv_results_)
+            cv_sorted = cv_results.sort_values(by = 'mean_test_score', ascending= False)
+            print("CV Results:", cv_sorted.head())
+            today = datetime.now().date()
+            cv_sorted.to_csv(f"cv_results_{today}.csv", index = False)
         self.tuned_rf = self.grid_search.best_estimator_
+        self.y_pred =  self.tuned_rf.predict(self.X_test)
         return self.tuned_rf
     
-    def predict(self):
-        #use tuned model if called, otherwise use base
-        model = getattr(self, 'tuned_rf', None)
-        if model is None:
-            if not hasattr(self, 'rf'):
-                raise AttributeError("Model has not been fit. Call .fit() or .tune() first.")
-            model = self.rf
-
-        self.y_pred = model.predict(self.X_test)
-        return self.y_pred
-
     
     def evaluate(self):
-        model = getattr(self, 'tuned_rf', None)
-        if model is None:
-            if not hasattr(self, 'rf'):
-                raise AttributeError("Model has not been fit. Call .fit() or .tune() first.")
-        model = self.rf
-        self.oob = self.tuned_rf.oob_score_
+        if not hasattr(self, 'tuned_rf'):
+            raise AttributeError("Model has not been fit. Call fit_tune() first.")
+
+        model = self.tuned_rf
+        self.oob = model.oob_score_
         self.mse = mean_squared_error(self.y_test, self.y_pred)
         self.r2 = r2_score(self.y_test, self.y_pred)
         return self.oob, self.mse, self.r2
@@ -83,26 +81,36 @@ class RandomForest():
         x_names = self.X.columns  # Already one-hot encoded
         feat_df = pd.DataFrame({'Feature': x_names, 'Importance': imp})
         feat_df = feat_df.sort_values(by='Importance', ascending=False)
-
+    
         return feat_df.head(top_n)
+    
+    def shap_values(self):
+        if not hasattr(self, 'tuned_rf'):
+            raise ValueError("Model has not been tuned yet. Call .tune() first.")
+        explainer = shap.TreeExplainer(self.tuned_rf)
+        shap_values = explainer.shap_values(self.X_test)
+        return shap_values, shap.summary_plot(shap_values, self.X_test)
+
+
 
 ###### PERFORM RANDOM FOREST REGRESSION ########
 data = Preprocessor().get_data() #load data 
 target = 'Carry'
 
-reg = RandomForest(data, target)
+reg = RunRandomForest(data, target, exclude_cols= ['Date', 'TotalDistance', 'rawCarryGame',target])
 reg.onehotencode()
 reg.split_data(size = 0.3)
-reg.fit(n_estimators= 100)
-reg.tune(n=5)
-reg.predict()
+reg.fit(cv=5)
 oob, mse, r2 = reg.evaluate()
 feat_imp = reg.feature_importance(top_n=10)
+shap_vals, _ = reg.shap_values()
 
 print(feat_imp)
 print(f"OOB Score: {oob:.3f}")
 print(f"Mean Squared Error: {mse:.2f}")
 print(f"R² Score: {r2:.3f}")
+print(f"SHAP values: {shap_vals}")
+
 
 
 
