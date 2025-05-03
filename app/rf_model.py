@@ -14,10 +14,12 @@ from process import Preprocessor
 class RunRandomForest():
     def __init__(self, data, target: str, exclude_cols = None):
         self.data = data.dropna(subset=[target])
-        if exclude_cols == None:
-            self.exclude_cols = ['Date', target]
+        self.target = target 
+        default = ['Date', target]
+        if exclude_cols is None:
+            self.exclude_cols = default
         else:
-            self.exclude_cols = exclude_cols
+            self.exclude_cols = list(set(exclude_cols + [target]))
         self.X = self.data.drop(columns=self.exclude_cols)#drop response and date var
         self.y = self.data[target].values 
         assert np.issubdtype(self.y.dtype, np.number), "Y must be numeric"
@@ -89,27 +91,27 @@ class RunRandomForest():
             raise ValueError("Model has not been tuned yet. Call .tune() first.")
         explainer = shap.TreeExplainer(self.tuned_rf)
         shap_values = explainer.shap_values(self.X_test)
-        return shap_values, shap.summary_plot(shap_values, self.X_test)
+        return shap_values#, shap.summary_plot(shap_values, self.X_test)
 
 
 
 ###### PERFORM RANDOM FOREST REGRESSION ########
-data = Preprocessor().get_data() #load data 
-target = 'Carry'
+# data = Preprocessor().get_data() #load data 
+# target = 'Carry'
 
-reg = RunRandomForest(data, target, exclude_cols= ['Date', 'TotalDistance', 'rawCarryGame',target])
-reg.onehotencode()
-reg.split_data(size = 0.3)
-reg.fit(cv=5)
-oob, mse, r2 = reg.evaluate()
-feat_imp = reg.feature_importance(top_n=10)
-shap_vals, _ = reg.shap_values()
+# reg = RunRandomForest(data, target, exclude_cols= ['Date', 'TotalDistance', 'rawCarryGame',target])
+# reg.onehotencode()
+# reg.split_data(size = 0.3)
+# reg.fit(cv=5)
+# oob, mse, r2 = reg.evaluate()
+# feat_imp = reg.feature_importance(top_n=10)
+# shap_vals, _ = reg.shap_values()
 
-print(feat_imp)
-print(f"OOB Score: {oob:.3f}")
-print(f"Mean Squared Error: {mse:.2f}")
-print(f"R² Score: {r2:.3f}")
-print(f"SHAP values: {shap_vals}")
+# print(feat_imp)
+# print(f"OOB Score: {oob:.3f}")
+# print(f"Mean Squared Error: {mse:.2f}")
+# print(f"R² Score: {r2:.3f}")
+# print(f"SHAP values: {shap_vals}")
 
 
 
