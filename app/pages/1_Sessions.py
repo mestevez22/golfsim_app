@@ -291,18 +291,13 @@ class SessionsPage:
             self.selected_spin = st.selectbox("Select Metric", self.spin_metrics, key='selected_spin_inline')
 
         filtered_data = self.filter_data(self.date_range, self.selected_club)  #filter data based on selections
-
-        grouped = (
-            filtered_data
-            .groupby(self.selected_spin, observed=True)
-            .agg(Distance=(self.selected_dist, 'mean'), Count=(self.selected_dist, 'count'))
-            .reset_index()
-        )
+        
         fig = px.scatter(
         filtered_data,
         x=self.selected_spin,
         y= self.selected_dist,
         trendline='lowess',  
+        color = self.selected_dist,
         labels={self.selected_spin: self.selected_spin, self.selected_dist: f"{self.selected_dist} (Yards)"}
         )
 
