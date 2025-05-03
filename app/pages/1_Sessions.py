@@ -248,22 +248,34 @@ class SessionsPage:
         selected_clubs = self.club_multiselect("smash_chart_club_filter")
         filtered_chart = all_club_chart[all_club_chart['Club'].isin(selected_clubs)]
 
+
         #create bins for smash factor
         bin_edges = [0.5, 1.0, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 1.5, 1.55, 1.6]
         bin_labels = ['0.5–1', '1–1.1', '1.1-1.15', '1.15-1.2','1.2-1.25', '1.25-1.3', '1.3–1.35', '1.35–1.4', '1.4-1.45', '1.45-1.5', '1.5-1.55', '1.55-1.6']
         filtered_chart = filtered_chart.copy()
+        total_shots = filtered_chart.shape[0]
         filtered_chart['SmashBin'] = pd.cut(filtered_chart['SmashFactor'], bins=bin_edges, labels=bin_labels, right=False)
-        binned = filtered_chart.groupby('SmashBin', observed=True).agg({'DistanceToPin': 'mean'}).reset_index()
-
+        binned = filtered_chart.groupby(['SmashBin'], observed=True).agg(AvgDistanceToPin=('DistanceToPin', 'mean'),
+                                                                                 Count=('DistanceToPin', 'count')).reset_index()
         fig = px.bar(
-        binned,
-        x='SmashBin',
-        y='DistanceToPin',
-        color='SmashBin',
-        labels={'SmashBin': 'Smash Factor (ranges)', 'DistanceToPin': 'Average DistanceToPin'},
-        title=''
-    )
+            binned,
+            x='SmashBin',
+            y='AvgDistanceToPin',
+            color='SmashBin',
+            hover_data={
+                'SmashBin': True,
+                'AvgDistanceToPin': ':.3f',
+                'Count': True
+            },
+            labels={
+                'SmashBin': 'Smash Factor (ranges)',
+                'DistanceToPin': 'Avg Distance to Pin',
+                'Count' : 'Total Shots'
+            },
+            title=''
+        )
         st.plotly_chart(fig, use_container_width=True)
+        st.caption(f"Total Shots: {total_shots}")
 
     ############## RENDER TAB 4 - SPIN ANALYSIS ############## 
     def render_spin_tab(self):
@@ -271,7 +283,7 @@ class SessionsPage:
         self.dist_metrics = ['Carry', 'TotalDistance']
         with col_filters[0]:
             self.selected_club = st.selectbox("Filter by Club", self.club_filter_opts, index=0, key='club_filter_tab4')
-    
+
         with col_filters[1]:
             self.selected_dist = st.selectbox("Select a Distance Type", self.dist_metrics, key='selected_dist_inline')
 
@@ -297,20 +309,11 @@ class SessionsPage:
         st.plotly_chart(fig, use_container_width=True)
 
 
-
-
-
-
-
-
-
-#check progress
+#render page
 SessionsPage().render()
 
 
     
-# #---------------------------------------------------------------------------------
-
 
 
 
