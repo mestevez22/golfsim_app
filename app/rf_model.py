@@ -23,12 +23,12 @@ class RunRandomForest():
 
         if exclude_cols is None:
             self.exclude_cols = default
-        else:
-            self.exclude_cols = list(set(exclude_cols + default))
+        # else:
+        #     self.exclude_cols = list(set(exclude_cols + default))
         self.X = self.data.drop(columns=self.exclude_cols)#drop response and date var
         self.y = self.data[target].values 
 
-        # --- Drop rows with NaNs in any feature ---
+        #Drop rows with NaNs in any feature
         tmp = self.X.copy()
         tmp['target'] = self.y
         tmp = tmp.dropna()
@@ -55,10 +55,10 @@ class RunRandomForest():
     def fit(self, cv, log_cv = False): 
         base_rf = RandomForestRegressor(oob_score=True, random_state=42)
         self.param_grid = {
-            'n_estimators': [50, 100, 200],                   
-            'max_depth': [None, 5, 10, 20],                   
-            'min_samples_split': [2, 5, 10],                
-            'min_samples_leaf': [1, 2, 4],                    
+            'n_estimators': [50, 100],                   
+            'max_depth': [None, 5, 10],                   
+            'min_samples_split': [2, 5],                
+            'min_samples_leaf': [1, 2],                    
             'max_features': ['sqrt', 0.5],       
             'bootstrap': [True]                      
         }
@@ -72,6 +72,7 @@ class RunRandomForest():
             today = datetime.now().date()
             cv_sorted.to_csv(f"cv_results_{today}.csv", index = False)
         self.tuned_rf = self.grid_search.best_estimator_
+        print(self.tuned_rf)
         self.y_pred =  self.tuned_rf.predict(self.X_test)
         return self.tuned_rf
     
@@ -111,13 +112,13 @@ class RunRandomForest():
 # data = Preprocessor().get_data() #load data 
 # target = 'Carry'
 
-# reg = RunRandomForest(data, target, exclude_cols= ['Date', 'TotalDistance', 'rawCarryGame',target])
+# reg = RunRandomForest(data, target= target)
 # reg.onehotencode()
 # reg.split_data(size = 0.3)
 # reg.fit(cv=5)
 # oob, mse, r2 = reg.evaluate()
 # feat_imp = reg.feature_importance(top_n=10)
-# shap_vals, _ = reg.shap_values()
+# shap_vals = reg.shap_values()
 
 # print(feat_imp)
 # print(f"OOB Score: {oob:.3f}")
